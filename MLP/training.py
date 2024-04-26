@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 import time
 from utils.consts import *
+import os
 
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0.2):
@@ -35,10 +36,10 @@ class MLP(nn.Module):
 # skip all the above because it's done in our data processing pipeline?
 
 # read our data instead...
-X_train = np.load( processed_data+ 'X_train.npy')
-X_test_val = np.load(processed_data + 'X_test.npy')
-y_train = np.load(processed_data + 'y_train.npy')
-y_test_val = np.load(processed_data + 'y_test.npy')
+X_train = np.load( os.path.join(processed_data ,  'X_train.npy'))
+X_test_val = np.load(os.path.join(processed_data ,  'X_test.npy'))
+y_train = np.load(os.path.join(processed_data ,  'y_train.npy'))
+y_test_val = np.load(os.path.join(processed_data ,  'y_test.npy'))
 
 print('Shape of X_train: ' + str(X_train.shape))
 print('Shape of X_test: ' + str(X_test_val.shape))

@@ -38,9 +38,13 @@ def generate_spectrograms( path ):
 
 def plot_spectrogram(y, sr, hop_length, y_axis , file_name ):
     figure , axis =  plt.subplots(figsize = (25,10))
-    image  = librosa.display.specshow(y, sr = sr, hop_length = hop_length, x_axis = "time", y_axis = y_axis)
-    figure.colorbar(image , format="%+2.f" , ax = axis )
-    axis.set_title(f'{file_name}')
+    image  = librosa.display.specshow(y, sr = sr, hop_length = hop_length)
+    
+    # figure.colorbar(image , format="%+2.f" , ax = axis )
+    # axis.set_title(f'{file_name}')
+    axis.set_xticks([])
+    axis.set_yticks([])
+    figure.tight_layout(pad=0)
     return figure
 
 if __name__ == "__main__":
