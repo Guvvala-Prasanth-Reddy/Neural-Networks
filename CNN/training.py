@@ -22,9 +22,9 @@ class CNN(pl.LightningModule):
         self.conv_layer_2 = nn.Conv2d(in_channels=3 , out_channels=3 ,kernel_size= kernel_size_2 )
         self.avg_pooling = nn.AvgPool2d( kernel_size= 4)
 
-        self.fc1 = nn.Linear( kernel_size_1 * kernel_size_2 * 3 , 64)
-        self.fc2 = nn.Linear(64 , 32)
-        self.fc3 = nn.Linear(32 , 10)
+        self.fc1 = nn.Linear(28365 , 64)
+        self.fc2 = nn.Linear(64 , 48)
+        self.fc3 = nn.Linear(48 ,3 )
         self.relu = nn.ReLU()
         self.cost = nn.CrossEntropyLoss()
         self.softmax = nn.Softmax()
@@ -33,18 +33,22 @@ class CNN(pl.LightningModule):
 
     def forward(self, x):
         x = self.max_pooling(self.relu(self.conv_layer_1(x)))
+        # print(x.shape , "conv 1")
         x = self.avg_pooling(self.relu(self.conv_layer_2(x)))
-        x = torch.flatten(x)
+        # print(x.shape , "conv 2")
+        x = torch.flatten(x  , 1)
+        # print(x.shape)
         x = self.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.relu(self.fc2(x))
         x = self.dropout(x)
         x = self.fc3(x)
-
+        # print(x.shape)
         return x
 
     def evaluate(self, batch, stage=None):
         x, y = batch
+        # print(x , y)
         y_hat = self.forward(x)
         loss = self.cost(y_hat, y)
         preds = torch.argmax(y_hat, dim=1)
@@ -76,7 +80,10 @@ class CNN(pl.LightningModule):
 
 # Load and preprocess data
 wine = load_wine()
-X = datasets.ImageFolder( 'test/')
+transform = transforms.Compose([transforms.ToTensor()])
+X = datasets.ImageFolder( 'test/' , transform = transform)
+print(X.classes , "classes")
+
 # scaler = StandardScaler()
 
 # X_train, X_test_val, y_train, y_test_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
@@ -93,17 +100,20 @@ batch_size=32
 train_loader = DataLoader(X, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(X, batch_size=batch_size)
 # test_loader = DataLoader(test_dataset, batch_size=batch_size)
+for images, labels in train_loader:
+    print("Label data type:", labels.dtype)  # Check if labels are Long type
+    break
 
 # Initialize MLP model
 input_size = 0
 hidden_size = 64
-output_size = 10  # Number of classes
+output_size = 50  # Number of classes
 
 model = CNN(input_size, hidden_size, output_size , kernel_size_1= 4 , kernel_size_2= 4 )
 print(model)
 
 # Train the model using PyTorch Lightning Trainer
-trainer = pl.Trainer(max_epochs=10,logger=CSVLogger(save_dir="logs/"))
+trainer = pl.Trainer(max_epochs=100,logger=CSVLogger(save_dir="logs/") , log_every_n_steps=1)
 trainer.fit(model, train_loader, val_loader)
 
 # Test the model
