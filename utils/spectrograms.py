@@ -28,9 +28,9 @@ def generate_spectrograms( path ):
                 audio, sample_rate = librosa.load(os.path.join(directory , sub_directory , file))
                 stft_audio = librosa.stft(audio, n_fft = frameSize, hop_length = hopSize)
                 y_audio = np.abs(stft_audio) ** 2
-                abs =  plot_spectrogram(y_audio, sample_rate, hopSize , "linear" , file)
-                abs.savefig( os.path.join( feature_files  , sub_directory ,  f"{file}-abs.png"))
-                plt.close(abs)
+                # abs =  plot_spectrogram(y_audio, sample_rate, hopSize , "linear" , file)
+                # abs.savefig( os.path.join( feature_files  , sub_directory ,  f"{file}-abs.png"))
+                # plt.close(abs)
                 y_log_audio = librosa.power_to_db(y_audio)
                 amplitude_to_db =  plot_spectrogram(y_log_audio, sample_rate, hopSize, "log" ,file)                
                 amplitude_to_db.savefig(os.path.join(feature_files ,  sub_directory , f"{file}-amp-db.png"))
