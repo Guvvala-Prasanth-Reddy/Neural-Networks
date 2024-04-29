@@ -19,12 +19,17 @@ class CNN(pl.LightningModule):
         super(CNN , self).__init__()
 
         self.conv_layer_1 = nn.Conv2d(in_channels=3 , out_channels=16 , kernel_size= kernel_size_1)
-        self.max_pooling = nn.MaxPool2d(kernel_size=2)
+        self.max_pooling = nn.MaxPool2d(kernel_size=7)
         self.conv_layer_2 = nn.Conv2d(in_channels=16 , out_channels=32 ,kernel_size= kernel_size_2 )
-        self.avg_pooling = nn.AvgPool2d( kernel_size= 2)
+        self.avg_pooling = nn.AvgPool2d( kernel_size= 7)
+        self.conv_layer_3 = nn.Conv2d(in_channels=32 , out_channels=64 , kernel_size=kernel_size_1)
 
-        self.fc1 = nn.Linear(32*248*623 , 128)
-        self.fc2 = nn.Linear(128 , 32)
+
+
+
+
+        self.fc1 = nn.Linear(64*1*5 , 160)
+        self.fc2 = nn.Linear(160 , 32)
         self.fc3 = nn.Linear(32 ,10 )
         self.relu = nn.ReLU()
         self.cost = nn.CrossEntropyLoss()
@@ -36,7 +41,9 @@ class CNN(pl.LightningModule):
         x = self.max_pooling(self.relu(self.conv_layer_1(x)))
         # print(x.shape , "conv 1")
         x = self.avg_pooling(self.relu(self.conv_layer_2(x)))
-        print(x.shape , "conv 2")
+        x = self.max_pooling(self.relu(self.conv_layer_3(x)))
+
+        print(x.shape , "conv 3")
         x = torch.flatten(x  , 1)
         print(x.shape)
         x = self.relu(self.fc1(x))
@@ -113,7 +120,7 @@ if __name__ == '__main__':
     hidden_size = 64
     output_size = 50  # Number of classes
 
-    model = CNN(input_size, hidden_size, output_size , kernel_size_1= 5 , kernel_size_2= 3 )
+    model = CNN(input_size, hidden_size, output_size , kernel_size_1= 10 , kernel_size_2= 10)
     print(model)
 
     # Train the model using PyTorch Lightning Trainer
