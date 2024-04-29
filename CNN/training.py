@@ -10,6 +10,7 @@ from utils.consts import *
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
 from torchvision import datasets, transforms
+from utils.spectrograms import generate_spectrograms
 
 
 
@@ -17,14 +18,14 @@ class CNN(pl.LightningModule):
     def __init__(self, input_size, hidden_size, output_size,  kernel_size_1 , kernel_size_2 , dropout_rate=0.2):
         super(CNN , self).__init__()
 
-        self.conv_layer_1 = nn.Conv2d(in_channels=3 , out_channels=3 , kernel_size= kernel_size_1)
-        self.max_pooling = nn.MaxPool2d(kernel_size=7)
-        self.conv_layer_2 = nn.Conv2d(in_channels=3 , out_channels=3 ,kernel_size= kernel_size_2 )
-        self.avg_pooling = nn.AvgPool2d( kernel_size= 4)
+        self.conv_layer_1 = nn.Conv2d(in_channels=3 , out_channels=16 , kernel_size= kernel_size_1)
+        self.max_pooling = nn.MaxPool2d(kernel_size=2)
+        self.conv_layer_2 = nn.Conv2d(in_channels=16 , out_channels=32 ,kernel_size= kernel_size_2 )
+        self.avg_pooling = nn.AvgPool2d( kernel_size= 2)
 
-        self.fc1 = nn.Linear(7560 , 128)
+        self.fc1 = nn.Linear(32*248*623 , 128)
         self.fc2 = nn.Linear(128 , 32)
-        self.fc3 = nn.Linear(32 ,3 )
+        self.fc3 = nn.Linear(32 ,10 )
         self.relu = nn.ReLU()
         self.cost = nn.CrossEntropyLoss()
         self.softmax = nn.Softmax()
@@ -35,7 +36,7 @@ class CNN(pl.LightningModule):
         x = self.max_pooling(self.relu(self.conv_layer_1(x)))
         # print(x.shape , "conv 1")
         x = self.avg_pooling(self.relu(self.conv_layer_2(x)))
-        # print(x.shape , "conv 2")
+        print(x.shape , "conv 2")
         x = torch.flatten(x  , 1)
         print(x.shape)
         x = self.relu(self.fc1(x))
@@ -78,10 +79,13 @@ class CNN(pl.LightningModule):
         return optimizer
 
 if __name__ == '__main__':
+    torch.cuda.empty_cache()
 # Load and preprocess data
     wine = load_wine()
     transform = transforms.Compose([transforms.ToTensor()])
-    X = datasets.ImageFolder( 'test/' , transform = transform)
+    # generate_spectrograms('data/train/')
+    X = datasets.ImageFolder( 'feature_files/' , transform = transform)
+
     print(X.classes , "classes")
 
     # scaler = StandardScaler()
@@ -96,9 +100,9 @@ if __name__ == '__main__':
     # val_dataset = TensorDataset(torch.tensor(X, dtype=torch.float32))
     # test_dataset = TensorDataset(torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_test, dtype=torch.long))
 
-    batch_size=32
-    train_loader = DataLoader(X, batch_size=batch_size, shuffle=True , num_workers=1)
-    val_loader = DataLoader(X, batch_size=batch_size , num_workers=1)
+    batch_size=4
+    train_loader = DataLoader(X, batch_size=batch_size, shuffle=True , num_workers=4)
+    val_loader = DataLoader(X, batch_size=batch_size , num_workers=4)
     # test_loader = DataLoader(test_dataset, batch_size=batch_size)
     for images, labels in train_loader:
         print("Label data type:", labels.dtype)  # Check if labels are Long type
@@ -109,11 +113,11 @@ if __name__ == '__main__':
     hidden_size = 64
     output_size = 50  # Number of classes
 
-    model = CNN(input_size, hidden_size, output_size , kernel_size_1= 32 , kernel_size_2= 16 )
+    model = CNN(input_size, hidden_size, output_size , kernel_size_1= 5 , kernel_size_2= 3 )
     print(model)
 
     # Train the model using PyTorch Lightning Trainer
-    trainer = pl.Trainer(max_epochs=100,logger=CSVLogger(save_dir="logs/") , log_every_n_steps=1)
+    trainer = pl.Trainer(max_epochs=50,logger=CSVLogger(save_dir="logs/") , log_every_n_steps=10)
     trainer.fit(model, train_loader, val_loader)
 
     # Test the model

@@ -9,7 +9,8 @@ import shutil
 def generate_spectrograms( path ):
     directory = path
     sub_directories = os.listdir(path)
-    sub_directories.remove('.DS_Store')
+    if( '.DS_Store' in sub_directories):
+        sub_directories.remove('.DS_Store')
     if( os.path.exists(path) != True):
          os.mkdir(feature_files)
     for sub_directory in sub_directories:
