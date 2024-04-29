@@ -18,19 +18,19 @@ class CNN(pl.LightningModule):
     def __init__(self, input_size, hidden_size, output_size,  kernel_size_1 , kernel_size_2 , dropout_rate=0.2):
         super(CNN , self).__init__()
 
-        self.conv_layer_1 = nn.Conv2d(in_channels=3 , out_channels=16 , kernel_size= kernel_size_1)
-        self.max_pooling = nn.MaxPool2d(kernel_size=7)
-        self.conv_layer_2 = nn.Conv2d(in_channels=16 , out_channels=32 ,kernel_size= kernel_size_2 )
-        self.avg_pooling = nn.AvgPool2d( kernel_size= 7)
-        self.conv_layer_3 = nn.Conv2d(in_channels=32 , out_channels=64 , kernel_size=kernel_size_1)
+        self.conv_layer_1 = nn.Conv2d(in_channels=3 , out_channels= 32 , kernel_size= kernel_size_1)
+        self.max_pooling = nn.MaxPool2d(kernel_size=5)
+        self.conv_layer_2 = nn.Conv2d(in_channels=32 , out_channels= 64 ,kernel_size= kernel_size_2 )
+        self.avg_pooling = nn.AvgPool2d( kernel_size= 5)
+        self.conv_layer_3 = nn.Conv2d(in_channels= 64 , out_channels= 128 , kernel_size=kernel_size_1)
 
 
 
 
 
-        self.fc1 = nn.Linear(64*1*5 , 160)
-        self.fc2 = nn.Linear(160 , 32)
-        self.fc3 = nn.Linear(32 ,10 )
+        self.fc1 = nn.Linear(128*5*17 , 4196 )
+        self.fc2 = nn.Linear(4196 ,  1024)
+        self.fc3 = nn.Linear(1024 ,10 )
         self.relu = nn.ReLU()
         self.cost = nn.CrossEntropyLoss()
         self.softmax = nn.Softmax()
@@ -38,14 +38,16 @@ class CNN(pl.LightningModule):
         self.dropout = nn.Dropout()
 
     def forward(self, x):
+        # print(x.shape , "input shape")
         x = self.max_pooling(self.relu(self.conv_layer_1(x)))
         # print(x.shape , "conv 1")
-        x = self.avg_pooling(self.relu(self.conv_layer_2(x)))
+        x = self.max_pooling(self.relu(self.conv_layer_2(x)))
+        # print(x.shape , "conv 2")
         x = self.max_pooling(self.relu(self.conv_layer_3(x)))
 
-        print(x.shape , "conv 3")
+        # print(x.shape , "conv 3")
         x = torch.flatten(x  , 1)
-        print(x.shape)
+        # print(x.shape)
         x = self.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.relu(self.fc2(x))
@@ -120,11 +122,11 @@ if __name__ == '__main__':
     hidden_size = 64
     output_size = 50  # Number of classes
 
-    model = CNN(input_size, hidden_size, output_size , kernel_size_1= 10 , kernel_size_2= 10)
+    model = CNN(input_size, hidden_size, output_size , kernel_size_1= (13, 13 ), kernel_size_2= (13,13))
     print(model)
 
     # Train the model using PyTorch Lightning Trainer
-    trainer = pl.Trainer(max_epochs=50,logger=CSVLogger(save_dir="logs/") , log_every_n_steps=10)
+    trainer = pl.Trainer( precision = 16,max_epochs=50,logger=CSVLogger(save_dir="logs/") , log_every_n_steps=10)
     trainer.fit(model, train_loader, val_loader)
 
     # Test the model
