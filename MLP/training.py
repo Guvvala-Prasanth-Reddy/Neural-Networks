@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.datasets import load_wine
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import recall_score, f1_score
 from torch.utils.data import DataLoader, TensorDataset
 import pandas as pd
 import os
@@ -95,6 +96,12 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
     train_acc_list = []
     valid_acc_list = []
 
+    # create lists to hold recall and f1 score over epochs for plotting
+    f1_score_list_train = []
+    f1_score_list_valid = []
+    recall_score_list_train = []
+    recall_score_list_valid = []
+
     # Training loop
     for epoch in range(num_epochs):
         # Training
@@ -102,6 +109,8 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
         train_loss = 0.0
         correct_train = 0
         total_train = 0
+        combined_preds = []
+        combined_targets = []
         for inputs, targets in train_loader:
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -113,8 +122,13 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
             total_train += targets.size(0)
             correct_train += (predicted == targets).sum().item()
 
+            combined_preds.extend([pred_tensor.tolist() for pred_tensor in predicted])
+            combined_targets.extend([target_tensor.tolist() for target_tensor in targets])
+
         train_accuracy = correct_train / total_train
         train_acc_list.append(train_accuracy)
+        recall_score_list_train.append(recall_score(combined_targets, combined_preds))
+        f1_score_list_train.append(f1_score(combined_targets, combined_preds))
         print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss / len(train_loader):.4f}, Train Accuracy: {100 * train_accuracy:.2f}%")
 
         # Validation
@@ -122,6 +136,8 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
         val_loss = 0.0
         correct_val = 0
         total_val = 0
+        combined_preds = []
+        combined_targets = []
         with torch.no_grad():
             for inputs, targets in val_loader:
                 outputs = model(inputs)
@@ -131,8 +147,13 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
                 total_val += targets.size(0)
                 correct_val += (predicted == targets).sum().item()
 
+                combined_preds.extend([pred_tensor.tolist() for pred_tensor in predicted])
+                combined_targets.extend([target_tensor.tolist() for target_tensor in targets])
+
         val_accuracy = correct_val / total_val
         valid_acc_list.append(val_accuracy)
+        recall_score_list_valid.append(recall_score(combined_targets, combined_preds))
+        f1_score_list_valid.append(f1_score(combined_targets, combined_preds))
         print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss / len(val_loader):.4f}, Validation Accuracy: {100 * val_accuracy:.2f}%")
 
         # simulate kaggle predictions here
@@ -157,7 +178,19 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.title('Train vs. Validation Accuracy')
+    #plt.show()
+
+    # print recall and f1 score
+    plt.figure()
+    plt.plot(list(range(num_epochs)), recall_score_list_train, label='Train Recall Score', linestyle='dashed', color='blue')
+    plt.plot(list(range(num_epochs)), recall_score_list_valid, label='Validation Recall Score', color='blue')
+    plt.plot(list(range(num_epochs)), f1_score_list_train, label='Train F1 Score', linestyle='dashed', color='orange')
+    plt.plot(list(range(num_epochs)), f1_score_list_valid, label='Validation F1 Score', color='orange')
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.title('Train vs. Validation Recall and F1 Scores')
     plt.show()
+
 
 def train_mlp_raytune(config):
 
