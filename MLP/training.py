@@ -12,6 +12,7 @@ import os
 import pandas as pd
 import shutil
 import sys
+import matplotlib.pyplot as plt
 
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0.2):
@@ -97,6 +98,10 @@ for batch_size in batch_size_list:
                 # Define optimizer and loss function
                 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
+                # create lists to hold train and validation accuracies for plotting
+                train_acc_list = []
+                valid_acc_list = []
+
                 print('Training beginning with the following parameter set (10 epochs, 2 hidden layers):')
                 print(f'\tbatch size={batch_size}, hidden layer size={hidden_size}, learning rate={lr}, weight decay={weight_decay}\n')
                 t0 = time.time()
@@ -122,7 +127,8 @@ for batch_size in batch_size_list:
 
                     train_accuracy = correct_train / total_train
                     print(f"\tEpoch {epoch+1}/{num_epochs}, Train Loss: {train_loss / len(train_loader):.4f}, Train Accuracy: {100 * train_accuracy:.2f}%")
-
+                    train_acc_list.append(train_accuracy)
+                    
                     # Validation
                     model.eval()
                     val_loss = 0.0
@@ -139,6 +145,7 @@ for batch_size in batch_size_list:
 
                     val_accuracy = 100 * (correct_val / total_val)
                     print(f"\tEpoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss / len(val_loader):.4f}, Validation Accuracy: {val_accuracy:.3f}%")
+                    valid_acc_list.append(val_accuracy)
 
                     # create kaggle predictions for each epoch
                     model.eval()
@@ -163,3 +170,13 @@ for batch_size in batch_size_list:
                 print(f'Parameter set training and validation completed in {elapsed_time} seconds\n\n')
                 print(f'Progress: {counter} of {total_iterations} iterations ({100 * counter / total_iterations}%)')
                 counter += 1
+
+                # uncomment the lines below to generate a plot of train vs. validation acc for each model
+                # fig = plt.figure()
+                # plt.plot(list(range(num_epochs)), train_acc_list, label='Train Accuracy')
+                # plt.plot(list(range(num_epochs)), valid_acc_list, label='Validation Accuracy')
+                # plt.legend()
+                # plt.xlabel('Epoch')
+                # plt.ylabel('Accuracy')
+                # plt.title('Train vs. Validation Accuracy')
+                # plt.show()
