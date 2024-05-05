@@ -36,8 +36,9 @@ class UnlabelledImageDataset(Dataset):
 
 
 def load_model(model_path , input_size , hidden_size , output_size  ):
-    model = model = CNN(input_size, hidden_size, output_size , kernel_size_1= 3, kernel_size_2= 3 )
-    model.load_state_dict(torch.load(model_path))
+    model =  CNN(input_size, hidden_size, output_size , kernel_size_1= 3, kernel_size_2= 3 )
+    # model = model.load_state_dict(torch.load(model_path))
+    model.load_from_checkpoint(model_path)
     model.eval()
     return model
 def prediction(model , X_test , classes):
@@ -56,12 +57,12 @@ def test_model():
     input_size = 0
     hidden_size = 64
     output_size = 50 
-    generate_spectrograms_kaggle('data/test/')
+    # generate_spectrograms_kaggle('data/test/')
     transform = transforms.Compose([transforms.ToTensor() ])
     X = datasets.ImageFolder( 'feature_files/' , transform = transform , loader = transform_image)
     classes = X.classes
     X_test = UnlabelledImageDataset( kaggle_pred_dir , transform = transform , )
-    model = load_model('models/models-accuracy100.0' ,  input_size , hidden_size , output_size)
+    model = load_model('logs/lightning_logs/version_19/checkpoints/epoch=4-step=1140.ckpt' ,  input_size , hidden_size , output_size)
     predicted = prediction(model , X_test , classes)
     files = os.listdir('data/test/')
     df = pd.DataFrame()
