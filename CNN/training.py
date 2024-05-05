@@ -201,68 +201,22 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
 # Load and preprocess data
     transform = transforms.Compose([transforms.ToTensor() ])
-    
 
-    # This went horrible , transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    #  std=[0.229, 0.224, 0.225])]
-    #Normalization source :- https://discuss.pytorch.org/t/why-image-datasets-need-normalizing-with-means-and-stds-specified-like-in-transforms-normalize-mean-0-485-0-456-0-406-std-0-229-0-224-0-225/187818/2
     # generate_spectrograms('data/train/')
     # generate_spectrograms_validation('data/train/')
-    # Y = datasets.ImageFolder( validation_dir , transform = transform , loader = transform_image)
-    # X = datasets.ImageFolder( 'feature_files/' , transform = transform , loader = transform_image)
-    # print(X.classes , "classes")
-
-    # scaler = StandardScaler()
-
-    # X_train, X_test_val, y_train, y_test_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    # X_train = scaler.fit_transform(X_train)
-    # X_test_val = scaler.transform(X_test_val)
-    # X_test, X_val, y_test, y_val = train_test_split(X_test_val, y_test_val, test_size=0.5, random_state=42, stratify=y_test_val)
-
-    # Create PyTorch datasets and dataloaders
-    # train_dataset = TensorDataset(torch.tensor(X, dtype=torch))    # val_dataset = TensorDataset(torch.tensor(X, dtype=torch.float32))
-    # test_dataset = TensorDataset(torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_test, dtype=torch.long))
+    #generate_spectrograms_kaggle('data/test/')
     
     batch_size=32
-    # train_size = int(0.8 * len(X))
-    # val_size = len(X) - train_size
-    # train_dataset, val_dataset = random_split(X, [train_size, val_size])
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True , num_workers=4)
-    # val_loader = DataLoader(train_dataset, batch_size=batch_size , num_workers=4 )
-    # test_loader = DataLoader(test_dataset, batch_size=batch_size)
-    # for images, labels in train_loader:
-    #     print("Label data type:", labels.dtype)  # Check if labels are Long type
-    #     break
 
     # Initialize MLP model
     input_size = 0
     hidden_size = 64
     output_size = 50  # Number of classes
 
-    # model = CNN(input_size, hidden_size, output_size , kernel_size_1= 3, kernel_size_2= 3 )
-    # model = CNN(input_size, hidden_size, output_size , kernel_size_1= 3, kernel_size_2= 3 )
-    # print(model)
-
-    # Train the model using PyTorch Lightning Trainer
-    # trainer = pl.Trainer( precision = 16,max_epochs=100,logger=CSVLogger(save_dir="logs/") , log_every_n_steps=10)
-    # trainer.fit(model, train_loader, val_loader)
-
-    # Test the model
-    # test1 = trainer.test(model, dataloaders=test_loader)
-    
-    
-    # combination = (splits[0] , validation_splits[0])
-    # i = 0
-    # for i in range(10) :
-    #         train_index,validation_index = splits[i]
-    #         validation_index , test_index = validation_splits[i]
-    #         run_train( train_index , validation_index  , X , Validation ,  batch_size , model)
-
-    # model.save('cnn')
-    # generate_spectrograms_kaggle('data/test/')  
+   
     
     #generate_spectrograms('data/train/')
-    #generate_spectrograms_kaggle('data/test/')
+    
     X = datasets.ImageFolder(os.path.join(Path.cwd(), feature_files),
                              transform=transforms.Compose([transforms.ToTensor()]), 
                              loader=transform_image)
