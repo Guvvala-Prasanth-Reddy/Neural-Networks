@@ -27,6 +27,8 @@ Install required dependecies with the command below (all platforms):
 pip install -r requirements.txt
 ```
 
+Note that some of the dependencies require Python 3.10 to install correctly and will not install on more recent versions of Python.
+
 ### Train MLP
 
 1. Specify values for the variables below in `utils/consts.py`:
