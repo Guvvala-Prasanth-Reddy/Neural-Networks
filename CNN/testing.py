@@ -8,6 +8,7 @@ import torch
 from PIL import Image
 import numpy as np
 import pandas as pd
+
 class UnlabelledImageDataset(Dataset):
     def __init__(self, image_dir, transform=None):
         """
@@ -33,13 +34,12 @@ class UnlabelledImageDataset(Dataset):
         return image
 
 
-
-
 def load_model(model_path , input_size , hidden_size , output_size  ):
     model = model = CNN(input_size, hidden_size, output_size , kernel_size_1= 3, kernel_size_2= 3 )
     model.load_state_dict(torch.load(model_path))
     model.eval()
     return model
+
 def prediction(model , X_test , classes):
     target_actual  = []
     target_predicted = []
@@ -52,11 +52,11 @@ def prediction(model , X_test , classes):
             target_predicted.extend(  np.take(classes , predicted.tolist()))
             print( np.take(classes , predicted.tolist() ))
     return target_predicted
+
 def test_model():
     input_size = 0
     hidden_size = 64
-    output_size = 50 
-    generate_spectrograms_kaggle('data/test/')
+    output_size = 10
     transform = transforms.Compose([transforms.ToTensor() ])
     X = datasets.ImageFolder( 'feature_files/' , transform = transform , loader = transform_image)
     classes = X.classes
