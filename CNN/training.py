@@ -12,6 +12,7 @@ import sys
 import os
 import pandas as pd
 import shutil
+import ray
 from ray import tune, train
 from ray.train import Checkpoint, get_checkpoint
 from ray.tune.schedulers import ASHAScheduler
@@ -171,6 +172,12 @@ if __name__ == '__main__':
     # Create data loaders for train and test sets
     train_sampler = torch.utils.data.SubsetRandomSampler(train_indices)
     val_sampler = torch.utils.data.SubsetRandomSampler(val_indices)
+
+    ray.init(
+        configure_logging=True,
+        logging_level='info',
+        log_to_driver=False
+    )
 
     hyperparameter_set = {
         'kernel_size_1': tune.grid_search([2, 5, 7]),
