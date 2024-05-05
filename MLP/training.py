@@ -48,12 +48,13 @@ if os.path.isdir(kaggle_pred_dir):
 os.makedirs(kaggle_pred_dir)
 
 # Load and preprocess data
-X_train = np.load('X_train.npy')
-X_val = np.load('X_test.npy')
-y_train = np.load('y_train.npy')
-y_val = np.load('y_test.npy')
-X_kaggle = np.load('X_kaggle.npy')
-kaggle_file_ids = pd.read_csv('kaggle_file_order.csv')
+feature_data_folder = 'processed_data'
+X_train = np.load(os.path.join(feature_data_folder, 'X_train.npy'))
+X_val = np.load(os.path.join(feature_data_folder, 'X_test.npy'))
+y_train = np.load(os.path.join(feature_data_folder, 'y_train.npy'))
+y_val = np.load(os.path.join(feature_data_folder, 'y_test.npy'))
+X_kaggle = np.load(os.path.join(feature_data_folder, 'X_kaggle.npy'))
+kaggle_file_ids = pd.read_csv(os.path.join(feature_data_folder, 'kaggle_file_order.csv'))
 
 # combine classes to create mapping from genres to integers
 y_combined = np.append(y_train, y_val, axis=0)
@@ -127,8 +128,8 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
 
         train_accuracy = correct_train / total_train
         train_acc_list.append(train_accuracy)
-        recall_score_list_train.append(recall_score(combined_targets, combined_preds))
-        f1_score_list_train.append(f1_score(combined_targets, combined_preds))
+        recall_score_list_train.append(recall_score(combined_targets, combined_preds, average='weighted'))
+        f1_score_list_train.append(f1_score(combined_targets, combined_preds, average='weighted'))
         print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss / len(train_loader):.4f}, Train Accuracy: {100 * train_accuracy:.2f}%")
 
         # Validation
@@ -152,8 +153,8 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
 
         val_accuracy = correct_val / total_val
         valid_acc_list.append(val_accuracy)
-        recall_score_list_valid.append(recall_score(combined_targets, combined_preds))
-        f1_score_list_valid.append(f1_score(combined_targets, combined_preds))
+        recall_score_list_valid.append(recall_score(combined_targets, combined_preds, average='weighted'))
+        f1_score_list_valid.append(f1_score(combined_targets, combined_preds, average='weighted'))
         print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss / len(val_loader):.4f}, Validation Accuracy: {100 * val_accuracy:.2f}%")
 
         # simulate kaggle predictions here
@@ -172,24 +173,28 @@ def train_mlp_kaggle(batch_size, hidden_size, dropout_rate, learning_rate, weigh
 
     # plot train vs validation acc for each epoch
     plt.figure()
-    plt.plot(list(range(num_epochs)), train_acc_list, label='Train Accuracy')
-    plt.plot(list(range(num_epochs)), valid_acc_list, label='Validation Accuracy')
+    plt.plot(list(range(num_epochs)), train_acc_list, marker='o', label='Train Accuracy')
+    plt.plot(list(range(num_epochs)), valid_acc_list, marker='o', label='Validation Accuracy')
     plt.legend()
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
-    plt.title('Train vs. Validation Accuracy')
-    #plt.show()
+    plt.title('Train vs. Validation Accuracy (MLP)')
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig('training_vs_valid_acc.png')
 
     # print recall and f1 score
     plt.figure()
-    plt.plot(list(range(num_epochs)), recall_score_list_train, label='Train Recall Score', linestyle='dashed', color='blue')
-    plt.plot(list(range(num_epochs)), recall_score_list_valid, label='Validation Recall Score', color='blue')
-    plt.plot(list(range(num_epochs)), f1_score_list_train, label='Train F1 Score', linestyle='dashed', color='orange')
-    plt.plot(list(range(num_epochs)), f1_score_list_valid, label='Validation F1 Score', color='orange')
+    plt.plot(list(range(num_epochs)), recall_score_list_train, marker='o', linestyle='dashed', color='blue', label='Train Recall Score')
+    plt.plot(list(range(num_epochs)), recall_score_list_valid, marker='o', color='blue', label='Validation Recall Score')
+    plt.plot(list(range(num_epochs)), f1_score_list_train, marker='o', linestyle='dashed', color='orange', label='Train F1 Score')
+    plt.plot(list(range(num_epochs)), f1_score_list_valid, marker='o', color='orange', label='Validation F1 Score')
     plt.legend()
     plt.xlabel('Epoch')
-    plt.title('Train vs. Validation Recall and F1 Scores')
-    plt.show()
+    plt.title('Train vs. Validation Recall and F1 Scores (MLP)')
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig('recall_and_f1.png')
 
 
 def train_mlp_raytune(config):
@@ -197,7 +202,6 @@ def train_mlp_raytune(config):
     batch_size=config['batch_size']
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
     # Initialize MLP model
     input_size = X_train.shape[1]
@@ -239,8 +243,6 @@ def train_mlp_raytune(config):
             _, predicted = torch.max(outputs, 1)
             total_train += targets.size(0)
             correct_train += (predicted == targets).sum().item()
-
-        train_accuracy = correct_train / total_train
 
         # Validation
         model.eval()
