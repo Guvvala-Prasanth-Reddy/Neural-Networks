@@ -25,7 +25,8 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, output_size)
+        self.fc3 = nn.Linear(hidden_size, hidden_size)
+        self.fc4 = nn.Linear(hidden_size, output_size)
         self.dropout = nn.Dropout(dropout_rate)
         self.relu = nn.ReLU()
         self.cost = nn.CrossEntropyLoss()
@@ -35,7 +36,9 @@ class MLP(nn.Module):
         x = self.dropout(x)
         x = self.relu(self.fc2(x))
         x = self.dropout(x)
-        x = self.fc3(x)
+        x = self.relu(self.fc3(x))
+        x = self.dropout(x)
+        x = self.fc4(x)
         return x
 
 
