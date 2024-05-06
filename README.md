@@ -36,12 +36,8 @@ Note that some of the dependencies require Python 3.10 to install correctly and 
    - `testing_data_path`: the path to your kaggle testing data directory (audio files)
 
 2. Run `python -m MLP.training` from the top level directory.
-- How to address audio data?
 - A hyperparameter search will be started with Ray Tune; this will take a while.
-- After training is complete, a model with best validation accuracy will be saved to `models/trained_model`.
-
-3. Generate predictions on your test data using the trained model: `python -m MLP.testing`.
-- A file will be generated containing kaggle predictions and saved as `kaggle_predictions.csv` in the top level directory.
+- After training is complete, the best performing model will be used to generate a predictions file in `MLP/`.
 
 ### Train CNN
 
@@ -50,21 +46,14 @@ Note that some of the dependencies require Python 3.10 to install correctly and 
    - `testing_data_path`: the path to your kaggle testing data directory (audio files)
 
 2. Run `python -m CNN.training` from the top level directory.
-- Spectrograms will be automatically generated for your training data; this will take a short while.
-- A hyperparameter search will be started with Ray Tune; this will take a long while.
-- After training is complete, a model with best validation accuracy will be saved to `models/trained_model`.
-
-3. Generate predictions on your test data using the trained model: `python -m CNN.testing`.
-- A file will be generated containing kaggle predictions and saved as `kaggle_predictions.csv` in the top level directory.
+- A hyperparameter search will be started with Ray Tune; this will take a while.
+- After training is complete, the best performing model will be used to generate a predictions file in `CNN/`.
 
 ### Code Manifest
 | File Name | Description |
 | --- | --- |
 | `CNN/training.py` | This file contains the training algorithm for the CNN. |
-| `CNN/testing.py` | This file generates kaggle predictions using a trained CNN model.  |
 | `MLP/training.py` | This file contains the training algorithm for the MLP.  |
-| `MLP/testing.py` | This file generates kaggle predictions using a trained CNN model.  |
-| `Transfer/testing.py` | This file contains the training algorithm for our transfer learning CNN.  |
 | `Transfer/training.py` | This file generates kaggle predictions using a trained transfer learning CNN.  |
 | `utils/consts.py` | This file has constants used throughout the library.  |
 | `utils/spectrograms.py` | This file contains our functions to convert audio files to spectrograms. |
