@@ -103,6 +103,11 @@ def plot_spectrogram(y: np.ndarray, sr: int, hop_length: int, y_axis, file_path:
     axis.set_xlabel('')
     axis.set_ylabel('')
     figure.tight_layout(pad=0)
+
+    filepath_dir = os.path.split(file_path)[0]
+    if not os.path.isdir(filepath_dir):
+        os.makedirs(filepath_dir)
+
     figure.savefig(file_path)
     plt.close(figure)
 
@@ -111,5 +116,5 @@ if __name__ == "__main__":
     """ Main method for testing
     """
 
-    generate_spectrograms(training_data_path)
+    generate_spectrograms_kaggle(testing_data_path)
 

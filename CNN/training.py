@@ -2,20 +2,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.model_selection import StratifiedKFold, train_test_split
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader
 from utils.consts import *
 import pytorch_lightning as pl
 from torchvision import datasets, transforms 
-from utils.spectrograms import transform_image, generate_spectrograms , generate_spectrograms_kaggle , generate_spectrograms_validation
-from PIL import Image
-from pytorch_lightning.callbacks import EarlyStopping , ModelCheckpoint
+from utils.spectrograms import transform_image, generate_spectrograms, generate_spectrograms_kaggle
 import os
 import pandas as pd
 import ray
 from ray import tune, train
-from ray.train import Checkpoint, get_checkpoint
+from ray.train import Checkpoint
 from ray.tune.schedulers import ASHAScheduler
-import ray.cloudpickle as pickle
 from pathlib import Path
 import tempfile
 from CNN.testing import prediction

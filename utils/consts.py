@@ -8,7 +8,7 @@ testing_data_path = 'data/test'
 processed_data_path = "processed_data"
 
 # path to spectorgram files generated from training dataset
-training_spectorgram_path = 'training_spectorgrams'
+training_spectorgram_path = 'training_spectrograms'
 
 # path to spectrogram files generated from testing (kaggle) dataset
 kaggle_spectrogram_path = 'kaggle_spectrograms'
