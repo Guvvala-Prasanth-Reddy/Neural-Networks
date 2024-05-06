@@ -17,7 +17,7 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 import tempfile
 import pandas as pd
-from CNN.testing import prediction
+from utils.kaggle_utils import prediction
 import matplotlib.pyplot as plt
 
 # seed rng for reproducible results

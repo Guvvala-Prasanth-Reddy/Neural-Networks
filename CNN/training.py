@@ -15,7 +15,7 @@ from ray.train import Checkpoint
 from ray.tune.schedulers import ASHAScheduler
 from pathlib import Path
 import tempfile
-from CNN.testing import prediction
+from utils.kaggle_utils import prediction
 import matplotlib.pyplot as plt
 
 # seed rng for reproducible results

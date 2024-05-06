@@ -6,7 +6,6 @@ from sklearn.metrics import recall_score, f1_score
 from torch.utils.data import DataLoader, TensorDataset
 import pandas as pd
 import os
-import shutil
 import ray
 from ray import tune, train
 from ray.train import Checkpoint
