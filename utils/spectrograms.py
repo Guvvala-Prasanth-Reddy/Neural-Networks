@@ -7,6 +7,12 @@ from utils.consts import *
 import shutil
 from PIL import Image
 
+def transform_image(path):
+    # Open an image file, ensuring it is read in RGBA mode
+    with open(path, 'rb') as f:
+        img = Image.open(f)
+        return img.convert('RGB')
+
 def generate_spectrograms( path  ):
     directory = path
     sub_directories = os.listdir(path)
@@ -96,6 +102,9 @@ def generate_spectrograms_validation(path):
 
 
 def plot_spectrogram(y, sr, hop_length, y_axis , file_name   ,sub_directory='' , mode = "training"):
+
+    print(y.shape)
+
     frames = y.shape[1]
     if( mode == "validation"):
         figure , axis =  plt.subplots(figsize = (5.12,5.12))
@@ -116,8 +125,8 @@ def plot_spectrogram(y, sr, hop_length, y_axis , file_name   ,sub_directory='' ,
         figure.tight_layout(pad=0)
         return figure
 
-    frames_per_file = frames//10
-    for i in range(10):
+    frames_per_file = frames//3
+    for i in range(3):
         frame_starting = i*frames_per_file
         frame_ending = (i+1)*frames_per_file
         figure , axis =  plt.subplots(figsize = (5.12,5.12))

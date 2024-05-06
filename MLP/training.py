@@ -73,6 +73,7 @@ def train_mlp_kaggle(config: Dict):
     recall_score_list_valid = []
 
     # training loop
+    num_epochs = 20
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
@@ -189,6 +190,7 @@ def train_mlp_raytune(config) -> None:
 
     # Ttaining loop
     val_accuracy = 0
+    num_epochs = 20
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
@@ -221,13 +223,7 @@ def train_mlp_raytune(config) -> None:
         val_accuracy = correct_val / total_val
 
         # save model checkpoints for use by Ray Tune
-        checkpoint_data = {
-                "epoch": epoch
-                }
         with tempfile.TemporaryDirectory() as checkpoint_dir:
-            data_path = Path(checkpoint_dir) / "data.pkl"
-            with open(data_path, "wb") as fp:
-                pickle.dump(checkpoint_data, fp)
 
             checkpoint = Checkpoint.from_directory(checkpoint_dir)
             train.report(
@@ -280,8 +276,8 @@ if __name__ == '__main__':
     hyperparameter_set = {
         'batch_size': tune.grid_search([8, 16, 32]),
         'hidden_size': tune.grid_search([32, 64, 128]),
-        'dropout_rate': tune.uniform(0.1, 0.5),
-        'learning_rate': tune.loguniform(1e-4, 1e-1),
+        'dropout_rate': tune.uniform(0.25, 0.5),
+        'learning_rate': tune.loguniform(1e-3, 1e-1),
         'weight_decay': tune.loguniform(1e-6, 1e-2)
     }
 
@@ -307,7 +303,7 @@ if __name__ == '__main__':
             metric="accuracy",
             mode="max",
             scheduler=scheduler,
-            num_samples=1,
+            num_samples=15,
         ),
         param_space=hyperparameter_set,
     )
