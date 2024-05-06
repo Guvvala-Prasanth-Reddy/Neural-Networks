@@ -18,6 +18,7 @@ from sklearn.model_selection import train_test_split
 import tempfile
 import pandas as pd
 from CNN.testing import prediction
+import matplotlib.pyplot as plt
 
 # seed rng for reproducible results
 torch.manual_seed(42)
@@ -28,15 +29,14 @@ class Transfer(pl.LightningModule):
         self.accuracy_flag = False
         self.model = models.vgg16(pretrained=True)
 
-
         if freeze:
             for parameter in self.model.features.parameters():
                 parameter.requires_grad = False
         self.model.classifier = nn.Sequential(
-            nn.Linear(512 * 7 * 7, hidden_layer),
+            nn.Linear(512 * 7 * 7, 15000),
             nn.ReLU(True),
             nn.Dropout(dropout_rate),
-            nn.Linear(hidden_layer, 1024),
+            nn.Linear(10000, 1024),
             nn.ReLU(True),
             nn.Dropout(dropout_rate),
             nn.Linear(1024, num_classes)
@@ -45,6 +45,10 @@ class Transfer(pl.LightningModule):
         self.cost = nn.CrossEntropyLoss()
         self.lr = lr
         self.weight_decay = weight_decay
+
+        # create lists to hold accuracies for plotting
+        self.val_acc_list = []
+        self.train_acc_list = []
         
 
     def forward(self, x):
@@ -80,9 +84,7 @@ class Transfer(pl.LightningModule):
         return(self.evaluate(batch, "test"))
 
     def on_train_epoch_end(self):
-        train_acc = 100 * self.trainer.callback_metrics['train_acc'].item()
-        train_loss = self.trainer.callback_metrics['train_loss'].item()
-        print(f"Train Loss: {train_loss}, Train Accuracy: {train_acc:.2f}%")
+        self.train_acc_list.append(self.trainer.callback_metrics['train_acc'].item())
     
     def save(self , val_acc):
         torch.save(self.state_dict() , f'models/models-cnn-{val_acc}')
@@ -96,6 +98,7 @@ class Transfer(pl.LightningModule):
     def on_validation_epoch_end(self):
         self.log('val_loss', self.trainer.callback_metrics['val_acc'], prog_bar=False)
         self.log('val_acc', self.trainer.callback_metrics['val_loss'], prog_bar=False)
+        self.val_acc_list.append(self.trainer.callback_metrics['val_acc'].item())
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
@@ -109,6 +112,8 @@ def run_train(config, X, training_sampler, validation_sampler, kaggle_X=None) ->
     train_loader = DataLoader(X, batch_size=config['batch_size'], sampler=training_sampler, num_workers=4)
     val_loader = DataLoader(X, batch_size=config['batch_size'], sampler=validation_sampler, num_workers=4)
 
+    num_epochs = 10
+
     model = Transfer(config['kernel_size_1'], 
                 config['kernel_size_2'],
                 config['hidden_size'],
@@ -116,7 +121,7 @@ def run_train(config, X, training_sampler, validation_sampler, kaggle_X=None) ->
                 weight_decay=config['weight_decay'],
                 dropout_rate=config['dropout_rate'], 
                 num_classes=10)
-    trainer = pl.Trainer(precision='16-mixed', max_epochs=3, logger=False, enable_checkpointing=False)
+    trainer = pl.Trainer(precision='16-mixed', max_epochs=num_epochs, logger=False, enable_checkpointing=False)
     trainer.fit(model, train_loader, val_loader)
 
     # if a kaggle dataset is provided, create a prediction file after training model
@@ -125,6 +130,18 @@ def run_train(config, X, training_sampler, validation_sampler, kaggle_X=None) ->
         df['id'] = os.listdir(testing_data_path)
         df['class'] = prediction(model, kaggle_X, X.classes)
         df.to_csv('outputs.csv', index=False)
+
+        # plot train vs validation acc for each epoch
+        plt.figure()
+        plt.plot(list(range(num_epochs)), model.train_acc_list, marker='o', label='Train Accuracy')
+        plt.plot(list(range(num_epochs)), model.val_acc_list, marker='o', label='Validation Accuracy')
+        plt.legend()
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.title('Train vs. Validation Accuracy (Transfer Learning)')
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig(os.path.join(Path.cwd(), 'Transfer', 'training_vs_valid_acc.png'))
     # otherwise, continue training with Ray Tune
     else:
         # the lines below are boilerplate for registering the accuracy and loss of a
