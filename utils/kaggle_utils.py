@@ -17,7 +17,7 @@ def prediction(model, X_test, classes) -> List[str]:
     target_predicted = []
     loader = DataLoader(X_test, batch_size=32, shuffle=False)
     with torch.no_grad(): 
-        for inputs in loader:
+        for inputs, _ in loader:
             predicted_outputs = model(inputs)
             _, predicted = torch.max(predicted_outputs.data, 1)
             target_predicted.extend(np.take(classes, predicted.tolist()))
