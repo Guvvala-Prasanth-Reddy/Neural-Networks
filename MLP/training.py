@@ -9,9 +9,8 @@ import os
 import shutil
 import ray
 from ray import tune, train
-from ray.train import Checkpoint, get_checkpoint
+from ray.train import Checkpoint
 from ray.tune.schedulers import ASHAScheduler
-import ray.cloudpickle as pickle
 import tempfile
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -43,7 +42,7 @@ class MLP(nn.Module):
         return x
 
 
-def train_mlp_kaggle(config: Dict):
+def train_mlp_kaggle(config: Dict[str, any]) -> None:
     """ Use this function to train a model on a set of parameters suggested by raytune.
         A kaggle prediction file will be created for each epoch and a train vs. validation
         accuracy plot will be generated as well.
@@ -138,7 +137,7 @@ def train_mlp_kaggle(config: Dict):
             if class_idx == kaggle_preds_list[pred_idx]:
               kaggle_preds_list[pred_idx] = class_name
               break
-        pd.concat([kaggle_file_ids, pd.DataFrame(kaggle_preds_list, columns=['class'])], axis=1).to_csv(os.path.join(Path.cwd(), 'MLP-kaggle-preds.csv'), index=False)
+        pd.concat([kaggle_file_ids, pd.DataFrame(kaggle_preds_list, columns=['class'])], axis=1).to_csv(os.path.join(Path.cwd(), 'MLP', 'MLP-kaggle-preds.csv'), index=False)
 
     # plot train vs validation acc for each epoch
     plt.figure()
@@ -150,7 +149,7 @@ def train_mlp_kaggle(config: Dict):
     plt.title('Train vs. Validation Accuracy (MLP)')
     plt.grid()
     plt.tight_layout()
-    plt.savefig(os.path.join(Path.cwd(), 'training_vs_valid_acc.png'))
+    plt.savefig(os.path.join(Path.cwd(), 'MLP', 'training_vs_valid_acc.png'))
 
     # print recall and f1 score
     plt.figure()
@@ -163,10 +162,10 @@ def train_mlp_kaggle(config: Dict):
     plt.title('Train vs. Validation Recall and F1 Scores (MLP)')
     plt.grid()
     plt.tight_layout()
-    plt.savefig(os.path.join(Path.cwd(), 'recall_and_f1.png'))
+    plt.savefig(os.path.join(Path.cwd(), 'MLP', 'recall_and_f1.png'))
 
 
-def train_mlp_raytune(config) -> None:
+def train_mlp_raytune(config: Dict[str, any]) -> None:
     """ Function to perform hyperparameter searching on our MLP model using Ray Tune.
 
         Parameters:
@@ -241,12 +240,6 @@ if __name__ == '__main__':
     # seed RNG for reproducible results
     torch.manual_seed(42)
 
-    # clear any previous kaggle predictions TODO: remove this and put in the testing file
-    kaggle_pred_dir = 'kaggle_preds'
-    if os.path.isdir(kaggle_pred_dir):
-        shutil.rmtree(kaggle_pred_dir)
-    os.makedirs(kaggle_pred_dir)
-
     # Load and preprocess data
     feature_data_folder = 'processed_data'
     X_train = np.load(os.path.join(feature_data_folder, 'X_train.npy'))
@@ -274,11 +267,11 @@ if __name__ == '__main__':
 
     # specify hyperparameters for Ray Tune to search
     hyperparameter_set = {
-        'batch_size': tune.grid_search([8, 16, 32]),
-        'hidden_size': tune.grid_search([32, 64, 128]),
-        'dropout_rate': tune.uniform(0.25, 0.5),
+        'batch_size': tune.grid_search([8, 16, 32, 64]),
+        'hidden_size': tune.grid_search([64, 128, 256]),
+        'dropout_rate': tune.uniform(0.3, 0.5),
         'learning_rate': tune.loguniform(1e-3, 1e-1),
-        'weight_decay': tune.loguniform(1e-6, 1e-2)
+        'weight_decay': tune.loguniform(1e-5, 1e-2)
     }
 
     # create ASHA scheduler to be used by Ray Tune
@@ -297,11 +290,11 @@ if __name__ == '__main__':
     tuner = tune.Tuner(
         tune.with_resources(
             tune.with_parameters(train_mlp_raytune),
-            resources={"cpu": 2, "gpu": 1}
+            resources={'cpu': 2, 'gpu': 1}
         ),
         tune_config=tune.TuneConfig(
-            metric="accuracy",
-            mode="max",
+            metric='accuracy',
+            mode='max',
             scheduler=scheduler,
             num_samples=15,
         ),
@@ -310,12 +303,12 @@ if __name__ == '__main__':
     results = tuner.fit()
 
     # print metrics on the best hyperparameter configuration
-    best_result = results.get_best_result("accuracy", "max")
-    print("Best trial final validation loss: {}".format(
-        best_result.metrics["loss"]))
-    print("Best trial config: {}".format(best_result.config))
-    print("Best trial final validation accuracy: {}".format(
-        best_result.metrics["accuracy"]))
+    best_result = results.get_best_result('accuracy', 'max')
+    print('Best trial final validation loss: {}'.format(
+        best_result.metrics['loss']))
+    print('Best trial config: {}'.format(best_result.config))
+    print('Best trial final validation accuracy: {}'.format(
+        best_result.metrics['accuracy']))
 
     # now generate kaggle predictions using the config of the best performing model
     train_mlp_kaggle(best_result.config)

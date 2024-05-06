@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch.utils.data import DataLoader, random_split, Subset
 from utils.consts import *
@@ -10,17 +9,8 @@ from torchvision import datasets, transforms
 from utils.spectrograms import transform_image, generate_spectrograms , generate_spectrograms_kaggle , generate_spectrograms_validation
 from PIL import Image
 from pytorch_lightning.callbacks import EarlyStopping , ModelCheckpoint
-#from MLP.testing import predictions
-
-### Flags and treshold ###
-Accuracy_flag = False
-Treshold = 80.00
-validation_accuracies = []
-train_accuracies = []
-import sys
 import os
 import pandas as pd
-import shutil
 import ray
 from ray import tune, train
 from ray.train import Checkpoint, get_checkpoint
@@ -73,7 +63,16 @@ class CNN(pl.LightningModule):
 
     def evaluate(self, batch, stage=None):
         x, y = batch
-        y_hat = self.forward(x)
+
+        y_hat = None
+        if stage == 'val':
+            with torch.no_grad():
+                self.eval()
+                y_hat = self.forward(x)
+            self.train()
+        else:
+            y_hat = self.forward(x)
+
         loss = self.cost(y_hat, y)
         preds = torch.argmax(y_hat, dim=1)
         acc = (preds == y).float().mean()
@@ -106,17 +105,6 @@ class CNN(pl.LightningModule):
         torch.save(self.state_dict() , f'models/models-{val_acc}')
 
     def on_validation_epoch_end(self):
-        # val_acc = 100*self.trainer.callback_metrics['val_acc'].item()
-        # if( val_acc > Treshold ):
-        #     validation_accuracies.append(val_acc)
-        #     if( len(validation_accuracies) > 5 ):
-        #         self.accuracy_flag = True
-        #         self.trainer.should_stop = True
-        #         self.save(val_acc)
-        print(f"Validation Loss: {self.trainer.callback_metrics['val_loss'].item()}, Validation Accuracy: {self.trainer.callback_metrics['val_acc'].item():.2f}%")
-        # val_acc = 100 * self.trainer.callback_metrics['val_acc'].item()
-        # val_loss = 100 * self.trainer.callback_metrics['val_loss'].item()
-        # print(f"Validation Loss: {val_loss}, Validation Accuracy: {val_acc:.2f}%")
         self.log('val_loss', self.trainer.callback_metrics['val_loss'], prog_bar=False)
         self.log('val_acc', self.trainer.callback_metrics['val_acc'], prog_bar=False)
 
@@ -124,14 +112,24 @@ class CNN(pl.LightningModule):
         return optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
 
-def run_train(config, X , split_indices, kaggle_X=None):
+def run_train(config, X, train_sampler, valid_sampler, kaggle_X=None) -> None:
     """ Use this function to perform a hyperparameter search when unsure about
         the correct values to use
+
+        Parameters:
+            config: a library of hyperparameter values used by Ray Tune
+            X: the spectrogram dataset
+            train_sampler: a sampler in the indices of X which are to be
+                used for training
+            val_sampler: a sampler on the indices of X which are to be used
+                for validation
+            kaggle_X: the kaggle spectrogram dataset if a prediction file is
+                to be generated; None otherwise
     """
 
     # resample train and validation data using specific batch size
-    train_loader = DataLoader(X, batch_size=config['batch_size'], num_workers=4)
-    val_loader = DataLoader(Y, batch_size=config['batch_size'], num_workers=4)
+    train_loader = DataLoader(X, batch_size=config['batch_size'], sampler=train_sampler, num_workers=4)
+    val_loader = DataLoader(X, batch_size=config['batch_size'], sampler=valid_sampler, num_workers=4)
 
     model = CNN(config['kernel_size_1'], 
                 config['kernel_size_2'],
@@ -139,25 +137,25 @@ def run_train(config, X , split_indices, kaggle_X=None):
                 lr=config['lr'],
                 weight_decay=config['weight_decay'],
                 dropout_rate=config['dropout_rate'])
-    trainer = pl.Trainer(precision="16-mixed", max_epochs=10, logger=False, enable_checkpointing=False)
+    trainer = pl.Trainer(precision='16-mixed', max_epochs=10, logger=False, enable_checkpointing=False)
     trainer.fit(model, train_loader, val_loader)
 
+    # if a kaggle dataset is provided, create a prediction file after training model
     if kaggle_X is not None:
         df = pd.DataFrame()
-        df['id'] = os.listdir('data/test/')
-        df['class'] = prediction(model , kaggle_X , X.classes)
-        df.to_csv('outputs.csv' , index = False)
-
+        df['id'] = os.listdir(testing_data_path)
+        df['class'] = prediction(model, kaggle_X, X.classes)
+        df.to_csv('outputs.csv', index=False)
+    # otherwise, continue training with Ray Tune
     else:
         # the lines below are boilerplate for registering the accuracy and loss of a
         # hyperparameter set with Ray Tune
         with tempfile.TemporaryDirectory() as checkpoint_dir:
-
             checkpoint = Checkpoint.from_directory(checkpoint_dir)
             train.report(
                 {
-                    "loss": trainer.callback_metrics['val_loss'].item(), 
-                    "accuracy": trainer.callback_metrics['val_acc'].item()
+                    'loss': trainer.callback_metrics['val_loss'].item(), 
+                    'accuracy': trainer.callback_metrics['val_acc'].item()
                 },
                 checkpoint=checkpoint,
             )
@@ -165,24 +163,31 @@ def run_train(config, X , split_indices, kaggle_X=None):
 if __name__ == '__main__':
     torch.cuda.empty_cache()
 
-    transform = transforms.Compose([transforms.ToTensor() ])
+    # this process only needs to be done once per dataset; feel free
+    # to comment the lines out once your spectrograms have been made
+    # generate_spectrograms(training_data_path)
+    # generate_spectrograms_kaggle(testing_data_path)
 
-    # generate_spectrograms('data/train/')
-    # generate_spectrograms_validation('data/train/')
-    #generate_spectrograms_kaggle('data/test/')
+    transform = transforms.Compose([transforms.ToTensor()])
 
-    # X_train = datasets.ImageFolder(os.path.join(Path.cwd(), feature_files),
-    #                          transform=transforms.Compose([transforms.ToTensor()]), 
-    #                          loader=transform_image)
-    X = datasets.ImageFolder( os.path.join(Path.cwd(), validation_dir) , transform = transform , loader = transform_image)
-    num_of_folds = 10
-    labels =  np.array([x[1] for x in X.imgs])
-    kfold_cross_validation = StratifiedKFold(n_splits = num_of_folds , shuffle = True)
-    split_indices = kfold_cross_validation.split(X , labels )
+    X = datasets.ImageFolder(os.path.join(Path.cwd(), training_spectorgram_path),
+                             transform=transforms.Compose([transforms.ToTensor()]), 
+                             loader=transform_image)
+    X_kaggle = datasets.ImageFolder(os.path.join(Path.cwd(), kaggle_spectrogram_path), 
+                                    transform=transforms.Compose([transforms.ToTensor()]),
+                                    loader=transform_image)
 
-    # X_kaggle = datasets.ImageFolder(os.path.join(Path.cwd(), feature_files, ), 
-    #                                 transform=transforms.Compose([transforms.ToTensor()]),
-    #                                 loader=transform_image)
+    # split the dataset into stratified train and valid splits
+    train_indices, val_indices = train_test_split(
+        range(len(X)),
+        test_size=0.2,
+        stratify= [label for _, label in X],
+        random_state=42
+    )
+
+    # create data loaders for train and validate splits
+    train_sampler = torch.utils.data.SubsetRandomSampler(train_indices)
+    val_sampler = torch.utils.data.SubsetRandomSampler(val_indices)
 
     ray.init(
         configure_logging=True,
@@ -190,28 +195,31 @@ if __name__ == '__main__':
         log_to_driver=True
     )
 
+    # define the hyperparameters to test and their ranges
     hyperparameter_set = {
-        'kernel_size_1': tune.grid_search([7]),
-        'kernel_size_2': tune.grid_search([5]),
-        'batch_size': tune.grid_search([16]),
-        'hidden_size': tune.grid_search([256]),
-        'dropout_rate': tune.uniform(0.1, 0.5),
+        'kernel_size_1': tune.grid_search([3, 5]),
+        'kernel_size_2': tune.grid_search([3, 5]),
+        'batch_size': tune.grid_search([16, 32]),
+        'hidden_size': tune.grid_search([128, 256]),
+        'dropout_rate': tune.uniform(0.3, 0.5),
         'lr': tune.loguniform(1e-4, 1e-1),
-        'weight_decay': tune.loguniform(1e-6, 1e-2)
+        'weight_decay': tune.loguniform(1e-5, 1e-3)
     }
 
+    # define ASHA scheduler to be used by Ray Tune
     scheduler = ASHAScheduler(
         grace_period=1,
-        reduction_factor=2)
+        reduction_factor=2
+    )
 
     tuner = tune.Tuner(
         tune.with_resources(
-            tune.with_parameters(lambda x: run_train(x, X, split_indices)),
-            resources={"cpu": 3, "gpu": 1}
+            tune.with_parameters(lambda x: run_train(x, X, train_sampler, val_sampler)),
+            resources={'cpu': 3, 'gpu': 1}
         ),
         tune_config=tune.TuneConfig(
-            metric="accuracy",
-            mode="max",
+            metric='accuracy',
+            mode='max',
             scheduler=scheduler,
             num_samples=1,
         ),
@@ -219,12 +227,12 @@ if __name__ == '__main__':
     )
     results = tuner.fit()
 
-    best_result = results.get_best_result("accuracy", "max")
-
-    print("Best trial config: {}".format(best_result.config))
-    print("Best trial final validation accuracy: {}".format(
-        best_result.metrics["accuracy"]))
+    # after Ray Tune finishes, display the results of best configuration
+    best_result = results.get_best_result('accuracy', 'max')
+    print('Best trial config: {}'.format(best_result.config))
+    print('Best trial final validation accuracy: {}'.format(
+        best_result.metrics['accuracy']))
 
     # create kaggle file with the configuration of the best model
     print('Generating kaggle file...')
-    run_train(best_result.config, X_train, X_valid, kaggle_X=X_kaggle)
+    run_train(best_result.config, X, train_sampler, val_sampler, kaggle_X=X_kaggle)

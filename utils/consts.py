@@ -1,9 +1,14 @@
-processed_data = "processed data"
-frameSize = 2048
-hopSize = 512
-feature_files = 'feature_files'
+# path to training audio dataset arranged in folders by class
+training_data_path = 'data/train'
 
-# directory where kaggle prediction files are kept
-kaggle_pred_dir = 'kaggle_preds'
+# path to testing (kaggle) audio dataset
+testing_data_path = 'data/test'
 
-validation_dir = "validation"
+# directory to the audio features extracted for Project 2
+processed_data_path = "processed_data"
+
+# path to spectorgram files generated from training dataset
+training_spectorgram_path = 'training_spectorgrams'
+
+# path to spectrogram files generated from testing (kaggle) dataset
+kaggle_spectrogram_path = 'kaggle_spectrograms'

@@ -39,8 +39,8 @@ def generate_spectrograms(dataset_path: str) -> None:
     sub_directories = os.listdir(dataset_path)
     if '.DS_Store' in sub_directories:
         sub_directories.remove('.DS_Store')
-    if not os.path.exists(feature_files):
-         os.mkdir(feature_files)
+    if not os.path.exists(training_spectorgram_path):
+         os.mkdir(training_spectorgram_path)
 
     # iterate over class folders
     for sub_directory in sub_directories:
@@ -48,9 +48,9 @@ def generate_spectrograms(dataset_path: str) -> None:
         
         if sub_directory.startswith('.DS') != True:
             files = os.listdir(os.path.join(dataset_path, sub_directory ))
-        if os.path.exists(os.path.join(feature_files, sub_directory)):
-                    shutil.rmtree(os.path.join(feature_files , sub_directory))
-        os.makedirs(os.path.join(feature_files, sub_directory))
+        if os.path.exists(os.path.join(training_spectorgram_path, sub_directory)):
+                    shutil.rmtree(os.path.join(training_spectorgram_path , sub_directory))
+        os.makedirs(os.path.join(training_spectorgram_path, sub_directory))
             
         # iterate over all files per class
         for filename in files:
@@ -59,7 +59,7 @@ def generate_spectrograms(dataset_path: str) -> None:
                 stft_audio = librosa.stft(audio, n_fft=frame_size, hop_length=hop_size)
                 y_audio = np.abs(stft_audio) ** 2
                 y_log_audio = librosa.power_to_db(y_audio, ref=np.max)
-                plot_spectrogram(y_log_audio, sample_rate, hop_size, 'log', os.path.join(feature_files, sub_directory, f'{filename}-amp-db.png'))                
+                plot_spectrogram(y_log_audio, sample_rate, hop_size, 'log', os.path.join(training_spectorgram_path, sub_directory, f'{filename}-amp-db.png'))                
 
 
 def generate_spectrograms_kaggle(path: str) -> None:
@@ -70,8 +70,8 @@ def generate_spectrograms_kaggle(path: str) -> None:
             path: the path to the test dataset of audio files
     """
     
-    if not os.path.exists(kaggle_pred_dir):
-        os.mkdir(kaggle_pred_dir)
+    if not os.path.exists(kaggle_spectrogram_path):
+        os.mkdir(kaggle_spectrogram_path)
 
     for filename in os.listdir(path):
         if filename.endswith('.au'):
@@ -80,7 +80,7 @@ def generate_spectrograms_kaggle(path: str) -> None:
             y_audio = np.abs(stft_audio) ** 2
             
             y_log_audio = librosa.power_to_db(y_audio, ref=np.max)
-            plot_spectrogram(y_log_audio, sample_rate, hop_size, 'log', os.path.join(kaggle_pred_dir, f'{filename}.png'))
+            plot_spectrogram(y_log_audio, sample_rate, hop_size, 'log', os.path.join(kaggle_spectrogram_path, 'kaggle', f'{filename}.png'))
 
 
 def plot_spectrogram(y: np.ndarray, sr: int, hop_length: int, y_axis, file_path: str, mode:str='training') -> plt.Figure:
@@ -111,5 +111,5 @@ if __name__ == "__main__":
     """ Main method for testing
     """
 
-    generate_spectrograms('data/train/')
+    generate_spectrograms(training_data_path)
 
