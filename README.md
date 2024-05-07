@@ -49,12 +49,22 @@ Note that some of the dependencies require Python 3.10 to install correctly and 
 - A hyperparameter search will be started with Ray Tune; this will take a while.
 - After training is complete, the best performing model will be used to generate a predictions file in `CNN/`.
 
+### Train Transfer Learning
+
+1. Specify values for the variables below in `utils/consts.py`:
+   - `training_data_path`: the path to your training data directory (audio files)
+   - `testing_data_path`: the path to your kaggle testing data directory (audio files)
+
+2. Run `python -m Transfer.training` from the top level directory.
+- A hyperparameter search will be started with Ray Tune; this will take a while.
+- After training is complete, the best performing model will be used to generate a predictions file in `Transfer/`.
+
 ### Code Manifest
 | File Name | Description |
 | --- | --- |
 | `CNN/training.py` | This file contains the training algorithm for the CNN. |
 | `MLP/training.py` | This file contains the training algorithm for the MLP.  |
-| `Transfer/training.py` | This file generates kaggle predictions using a trained transfer learning CNN.  |
+| `Transfer/training.py` | This file contains the training algorithm for our transfer learning model.  |
 | `utils/consts.py` | This file has constants used throughout the library.  |
 | `utils/spectrograms.py` | This file contains our functions to convert audio files to spectrograms. |
 | `requirements.txt` | This file contains our project's Python dependencies. |
@@ -66,7 +76,7 @@ Prasanth Reddy Guvvala
 - Implemented CNN architecture.
 - Implemented spectrogram transforms.
 - Implemented transfer learning.
-- Impelemented data augmentation.
+- Implemented data augmentation.
 
 Thomas Fisher
 - Implemented MLP architecture.
@@ -76,4 +86,4 @@ Thomas Fisher
 
 ## kaggle Submission
 
-Leaderboard position XX achieved with accuracy YY on May 6th (team name: Fisher & Guvvala).
+Leaderboard position 11 achieved with accuracy 68% on May 6th (team name: Fisher & Guvvala).
