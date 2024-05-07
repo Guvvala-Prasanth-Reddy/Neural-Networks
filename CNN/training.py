@@ -201,8 +201,10 @@ if __name__ == '__main__':
 
     # only create spectrograms if we detect they are not already present
     if not os.path.isdir(training_spectorgram_path):
+        print('Creating training spectrograms. Please be patient...')
         generate_spectrograms(training_data_path)
     if not os.path.isdir(kaggle_spectrogram_path):
+        print('Creating training spectrograms. Please be patient...')
         generate_spectrograms_kaggle(testing_data_path)
 
     # load image datasets
