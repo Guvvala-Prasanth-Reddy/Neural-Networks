@@ -24,7 +24,23 @@ import matplotlib.pyplot as plt
 torch.manual_seed(42)
 
 class Transfer(pl.LightningModule):
+    """ Class to represent our transfer learning model
+    """
+
     def __init__(self, hidden_layer, lr, weight_decay, num_classes, dropout_rate=0.2, freeze=True):
+        """ Initializes a CNN object
+
+            Parameters:
+                hidden_size: the size of the hidden layers of the MLP classifier used after
+                    our convolutional layers
+                lr: learning rate
+                weight_decay: a penalty applied to large weights to enforce regularization
+                dropout_rate: a fraction controlling how many of the network nodes are affected
+                    by dropout
+                num_classes: the number of classes in our dataset
+                freeze: indicates whether to use VGG16's pre-trained layers
+        """
+
         super(Transfer , self).__init__()
         self.accuracy_flag = False
         self.model = models.vgg16(pretrained=True)
@@ -33,13 +49,13 @@ class Transfer(pl.LightningModule):
             for parameter in self.model.features.parameters():
                 parameter.requires_grad = False
         self.model.classifier = nn.Sequential(
-            nn.Linear(512 * 7 * 7, 15000),
+            nn.Linear(512 * 7 * 7, hidden_layer),
             nn.ReLU(True),
             nn.Dropout(dropout_rate),
-            nn.Linear(10000, 1024),
+            nn.Linear(hidden_layer, hidden_layer),
             nn.ReLU(True),
             nn.Dropout(dropout_rate),
-            nn.Linear(1024, num_classes)
+            nn.Linear(hidden_layer, num_classes)
         )
         
         self.cost = nn.CrossEntropyLoss()
@@ -85,6 +101,7 @@ class Transfer(pl.LightningModule):
 
     def on_train_epoch_end(self):
         self.train_acc_list.append(self.trainer.callback_metrics['train_acc'].item())
+        print(f'Train accuracy: {self.trainer.callback_metrics["train_acc"].item()}')
     
     def save(self , val_acc):
         torch.save(self.state_dict() , f'models/models-cnn-{val_acc}')
@@ -99,6 +116,7 @@ class Transfer(pl.LightningModule):
         self.log('val_loss', self.trainer.callback_metrics['val_acc'], prog_bar=False)
         self.log('val_acc', self.trainer.callback_metrics['val_loss'], prog_bar=False)
         self.val_acc_list.append(self.trainer.callback_metrics['val_acc'].item())
+        print(f'Validation accuracy: {self.trainer.callback_metrics["val_acc"].item()}')
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
@@ -112,15 +130,13 @@ def run_train(config, X, training_sampler, validation_sampler, kaggle_X=None) ->
     train_loader = DataLoader(X, batch_size=config['batch_size'], sampler=training_sampler, num_workers=4)
     val_loader = DataLoader(X, batch_size=config['batch_size'], sampler=validation_sampler, num_workers=4)
 
-    num_epochs = 10
+    num_epochs = 20
 
-    model = Transfer(config['kernel_size_1'], 
-                config['kernel_size_2'],
-                config['hidden_size'],
-                lr=config['lr'],
-                weight_decay=config['weight_decay'],
-                dropout_rate=config['dropout_rate'], 
-                num_classes=10)
+    model = Transfer(config['hidden_size'],
+                     lr=config['lr'],
+                     weight_decay=config['weight_decay'],
+                     dropout_rate=config['dropout_rate'], 
+                     num_classes=10)
     trainer = pl.Trainer(precision='16-mixed', max_epochs=num_epochs, logger=False, enable_checkpointing=False)
     trainer.fit(model, train_loader, val_loader)
 
@@ -133,8 +149,8 @@ def run_train(config, X, training_sampler, validation_sampler, kaggle_X=None) ->
 
         # plot train vs validation acc for each epoch
         plt.figure()
-        plt.plot(list(range(num_epochs)), model.train_acc_list, marker='o', label='Train Accuracy')
-        plt.plot(list(range(num_epochs)), model.val_acc_list, marker='o', label='Validation Accuracy')
+        plt.plot(list(range(num_epochs)), model.train_acc_list[-num_epochs:], marker='o', label='Train Accuracy')
+        plt.plot(list(range(num_epochs)), model.val_acc_list[-num_epochs:], marker='o', label='Validation Accuracy')
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
@@ -160,11 +176,13 @@ def run_train(config, X, training_sampler, validation_sampler, kaggle_X=None) ->
 if __name__ == '__main__':
     torch.cuda.empty_cache()
 
-    # this process only needs to be done once per dataset; feel free
-    # to comment the lines out once your spectrograms have been made
-    # generate_spectrograms(training_data_path)
-    # generate_spectrograms_kaggle(testing_data_path)
+    # only create spectrograms if we detect they are not already present
+    if not os.path.isdir(training_spectorgram_path):
+        generate_spectrograms(training_data_path)
+    if not os.path.isdir(kaggle_spectrogram_path):
+        generate_spectrograms_kaggle(testing_data_path)
     
+    # load spectrogram dataset
     transform = transforms.Compose([transforms.ToTensor() ])
     X = datasets.ImageFolder(os.path.join(Path.cwd(), training_spectorgram_path),
                              transform=transforms.Compose([transforms.ToTensor()]), 
@@ -191,21 +209,13 @@ if __name__ == '__main__':
         log_to_driver=False
     )
 
-    # hyperparameter_set = {
-    #     'kernel_size_1': tune.grid_search([2, 5, 7]),
-    #     'kernel_size_2': tune.grid_search([2, 5, 7]),
-    #     'batch_size': tune.grid_search([8, 16, 32]),
-    #     'hidden_size': tune.grid_search([32, 64, 128]),
-    #     'dropout_rate': tune.uniform(0.1, 0.5),
-    #     'lr': tune.loguniform(1e-4, 1e-1),
-    #     'weight_decay': tune.loguniform(1e-6, 1e-2)
-    # }
+
     hyperparameter_set = {
-        'batch_size': tune.grid_search([8, 16]),
-        'hidden_size': tune.grid_search([32]),
-        'dropout_rate': tune.grid_search([0.3]),
-        'lr': tune.grid_search([1e-3]),
-        'weight_decay': tune.grid_search([1e-6, 1e-2])
+        'batch_size': tune.grid_search([16, 32]),
+        'hidden_size': tune.grid_search([128, 256, 512]),
+        'dropout_rate': tune.uniform(0.25, 0.5),
+        'lr': tune.loguniform(1e-3, 1e-1),
+        'weight_decay': tune.loguniform(1e-5, 1e-3)
     }
 
     scheduler = ASHAScheduler(
@@ -221,7 +231,7 @@ if __name__ == '__main__':
             metric='accuracy',
             mode='max',
             scheduler=scheduler,
-            num_samples=1,
+            num_samples=10,
         ),
         param_space=hyperparameter_set,
     )
@@ -229,8 +239,10 @@ if __name__ == '__main__':
 
     best_result = results.get_best_result('accuracy', 'max')
 
-    print('Best trial final validation loss: {}'.format(
-        best_result.metrics['loss']))
     print('Best trial config: {}'.format(best_result.config))
     print('Best trial final validation accuracy: {}'.format(
         best_result.metrics['accuracy']))
+    
+    # create kaggle file with the configuration of the best model
+    print('\n\n\nModel training complete. Generating kaggle file with best configuration...\n\n')
+    run_train(best_result.config, X, train_sampler, val_sampler, kaggle_X=X_kaggle)

@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 import matplotlib.pyplot as plt
 from typing import Dict
+from utils.consts import *
 
 
 class MLP(nn.Module):
@@ -21,6 +22,17 @@ class MLP(nn.Module):
     """
 
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0.2):
+        """ Initializes a MLP object
+
+        Parameters
+            input_size: the size of the MLP input layer
+            hidden_size: the size of the hidden layers of the MLP classifier used after
+                our convolutional layers
+            output_size: the size of the output layer of the MLP
+            dropout_rate: a fraction controlling how many of the network nodes are affected
+                by dropout
+        """
+
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
@@ -240,13 +252,12 @@ if __name__ == '__main__':
     torch.manual_seed(42)
 
     # Load and preprocess data
-    feature_data_folder = 'processed_data'
-    X_train = np.load(os.path.join(feature_data_folder, 'X_train.npy'))
-    X_val = np.load(os.path.join(feature_data_folder, 'X_test.npy'))
-    y_train = np.load(os.path.join(feature_data_folder, 'y_train.npy'))
-    y_val = np.load(os.path.join(feature_data_folder, 'y_test.npy'))
-    X_kaggle = np.load(os.path.join(feature_data_folder, 'X_kaggle.npy'))
-    kaggle_file_ids = pd.read_csv(os.path.join(feature_data_folder, 'kaggle_file_order.csv'))
+    X_train = np.load(os.path.join(processed_data_path, 'X_train.npy'))
+    X_val = np.load(os.path.join(processed_data_path, 'X_test.npy'))
+    y_train = np.load(os.path.join(processed_data_path, 'y_train.npy'))
+    y_val = np.load(os.path.join(processed_data_path, 'y_test.npy'))
+    X_kaggle = np.load(os.path.join(processed_data_path, 'X_kaggle.npy'))
+    kaggle_file_ids = pd.read_csv(os.path.join(processed_data_path, 'kaggle_file_order.csv'))
 
     # combine classes to create mapping from genres to integers
     y_combined = np.append(y_train, y_val, axis=0)
@@ -310,4 +321,5 @@ if __name__ == '__main__':
         best_result.metrics['accuracy']))
 
     # now generate kaggle predictions using the config of the best performing model
+    print('\n\n\nModel training complete. Generating kaggle file with best configuration...\n\n')
     train_mlp_kaggle(best_result.config)

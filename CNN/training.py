@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 from utils.consts import *
 import pytorch_lightning as pl
@@ -17,12 +17,29 @@ from pathlib import Path
 import tempfile
 from utils.kaggle_utils import prediction
 import matplotlib.pyplot as plt
+import sys
 
 # seed rng for reproducible results
 torch.manual_seed(42)
     
 class CNN(pl.LightningModule):
+    """ Class which represents our custom CNN architecture
+    """
+
     def __init__(self, kernel_size_1, kernel_size_2, hidden_size, lr, weight_decay, dropout_rate=0.2):
+        """ Initializes a CNN object
+
+            Parameters:
+                kernel_size_1: the size of the kernel used by the first convolutional layer
+                kernel_size_2: the size of the kernel used by the second convolutional layer
+                hidden_size: the size of the hidden layers of the MLP classifier used after
+                    our convolutional layers
+                lr: learning rate
+                weight_decay: a penalty applied to large weights to enforce regularization
+                dropout_rate: a fraction controlling how many of the network nodes are affected
+                    by dropout
+        """
+        
         super(CNN , self).__init__()
         # define components of convolutional architecture
         self.conv_layer_1 = nn.Conv2d(in_channels=3, out_channels=5, kernel_size=kernel_size_1, padding=1)
@@ -134,7 +151,7 @@ def run_train(config, X, train_sampler, valid_sampler, kaggle_X=None) -> None:
     train_loader = DataLoader(X, batch_size=config['batch_size'], sampler=train_sampler, num_workers=4)
     val_loader = DataLoader(X, batch_size=config['batch_size'], sampler=valid_sampler, num_workers=4)
 
-    num_epochs = 10
+    num_epochs = 20
 
     model = CNN(config['kernel_size_1'], 
                 config['kernel_size_2'],
@@ -153,9 +170,10 @@ def run_train(config, X, train_sampler, valid_sampler, kaggle_X=None) -> None:
         df.to_csv('outputs.csv', index=False)
 
         # plot train vs validation acc for each epoch
+        print(model.val_acc_list)
         plt.figure()
-        plt.plot(list(range(num_epochs)), model.train_acc_list, marker='o', label='Train Accuracy')
-        plt.plot(list(range(num_epochs)), model.val_acc_list, marker='o', label='Validation Accuracy')
+        plt.plot(list(range(num_epochs)), model.train_acc_list[-num_epochs:], marker='o', label='Train Accuracy')
+        plt.plot(list(range(num_epochs)), model.val_acc_list[-num_epochs:], marker='o', label='Validation Accuracy')
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
@@ -181,13 +199,14 @@ def run_train(config, X, train_sampler, valid_sampler, kaggle_X=None) -> None:
 if __name__ == '__main__':
     torch.cuda.empty_cache()
 
-    # this process only needs to be done once per dataset; feel free
-    # to comment the lines out once your spectrograms have been made
-    # generate_spectrograms(training_data_path)
-    # generate_spectrograms_kaggle(testing_data_path)
+    # only create spectrograms if we detect they are not already present
+    if not os.path.isdir(training_spectorgram_path):
+        generate_spectrograms(training_data_path)
+    if not os.path.isdir(kaggle_spectrogram_path):
+        generate_spectrograms_kaggle(testing_data_path)
 
+    # load image datasets
     transform = transforms.Compose([transforms.ToTensor()])
-
     X = datasets.ImageFolder(os.path.join(Path.cwd(), training_spectorgram_path),
                              transform=transforms.Compose([transforms.ToTensor()]), 
                              loader=transform_image)
@@ -210,17 +229,17 @@ if __name__ == '__main__':
     ray.init(
         configure_logging=True,
         logging_level='info',
-        log_to_driver=True
+        log_to_driver=False
     )
 
     # define the hyperparameters to test and their ranges
     hyperparameter_set = {
-        'kernel_size_1': tune.grid_search([3, 5]),
-        'kernel_size_2': tune.grid_search([3, 5]),
+        'kernel_size_1': tune.grid_search([5, 7, 10]),
+        'kernel_size_2': tune.grid_search([5, 7, 10]),
         'batch_size': tune.grid_search([16, 32]),
         'hidden_size': tune.grid_search([128, 256]),
         'dropout_rate': tune.uniform(0.3, 0.5),
-        'lr': tune.loguniform(1e-4, 1e-1),
+        'lr': tune.loguniform(1e-3, 1e-1),
         'weight_decay': tune.loguniform(1e-5, 1e-3)
     }
 
@@ -239,7 +258,7 @@ if __name__ == '__main__':
             metric='accuracy',
             mode='max',
             scheduler=scheduler,
-            num_samples=1,
+            num_samples=10,
         ),
         param_space=hyperparameter_set,
     )
@@ -252,5 +271,5 @@ if __name__ == '__main__':
         best_result.metrics['accuracy']))
 
     # create kaggle file with the configuration of the best model
-    print('Generating kaggle file...')
+    print('\n\n\nModel training complete. Generating kaggle file with best configuration...\n\n')
     run_train(best_result.config, X, train_sampler, val_sampler, kaggle_X=X_kaggle)

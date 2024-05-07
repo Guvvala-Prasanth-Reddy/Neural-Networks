@@ -164,4 +164,5 @@ cython_debug/
 data/
 feature_files/
 logs/
-kaggle_preds/
+kaggle_spectrograms/
+training_spectrograms/
